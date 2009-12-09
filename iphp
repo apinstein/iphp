@@ -2,6 +2,6 @@
 <?php
 ini_set('memory_limit', '20M');
 
-require_once './iphp.php';
+require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'iphp.php';
 
 iphp::main(array());
