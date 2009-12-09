@@ -193,8 +193,16 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
         $this->lastCommand = NULL;
         readline_callback_handler_install($this->prompt, array($this, 'readlineCallback'));
         while ($this->lastCommand === NULL) {
-            readline_callback_read_char();
+            $w = NULL;
+            $e = NULL;
+            $n = @stream_select($r = array(STDIN), $w, $e, NULL);       // @ to silence warning on ctl-c
+            if ($n === false) break;                                    // ctl-c or other signal
+            if (in_array(STDIN, $r))
+            {
+                readline_callback_read_char();
+            }
         }
+        readline_callback_handler_remove();
         return $this->lastCommand;
     }
     public function readline()
@@ -215,9 +223,21 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
         return $command;
     }
 
+    public function stop()
+    {
+        // no-op
+    }
+
     public static function main($options = array())
     {
         $shell = new iphp($options);
+
+        // install signal handlers if possible
+        declare(ticks = 1);
+        if (function_exists('pcntl_signal'))
+        {
+            pcntl_signal(SIGINT, array($shell, 'stop'));
+        }
 
         print<<<END
 
