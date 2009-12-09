@@ -150,7 +150,7 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
 
             $result = NULL;
             $output = array();
-            $lastLine = exec("/opt/local/bin/php {$this->tmpFileShellCommand} 2>&1", $output, $result);
+            $lastLine = exec("{$_SERVER['PHP_COMMAND']} {$this->tmpFileShellCommand} 2>&1", $output, $result);
             if ($result != 0) throw( new Exception("Fatal error executing php: " . join("\n", $output)) );
 
             // boostrap requires environment of command
