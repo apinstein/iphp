@@ -1,8 +1,7 @@
 #!/usr/bin/env php
 <?php
+ini_set('memory_limit', '20M');
 
-ini_set("memory_limit", '20M');
-
-require_once('./iphp.php');
+require_once './iphp.php';
 
 iphp::main(array());
