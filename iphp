@@ -1,0 +1,8 @@
+#!/opt/local/bin/php
+<?php
+
+ini_set("memory_limit", '20M');
+
+require_once('./iphp.php');
+
+iphp::main(array());
