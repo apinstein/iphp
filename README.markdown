@@ -23,5 +23,3 @@ Example:
     
     > $_[0] + 1
     2
-
-**NOTE:** You may need to edit the #! line on the php executable to be appropriate for your system.
