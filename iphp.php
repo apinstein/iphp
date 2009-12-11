@@ -20,11 +20,13 @@ class iphp
     protected $tmpFileShellCommandRequires = null;
     protected $tmpFileShellCommandState = null;
     protected $options = array();
-    protected $phpExecutable = null;
 
     const OPT_TAGS_FILE     = 'tags';
     const OPT_REQUIRE       = 'require';
-    
+    const OPT_TMP_DIR       = 'tmp_dir';
+    const OPT_PROMPT_HEADER = 'prompt_header';
+    const OPT_PHP_BIN       = 'php_bin';
+
     /**
      * Constructor
      *
@@ -33,29 +35,49 @@ class iphp
      */
     public function __construct($options = array())
     {
-	
-        $this->initializePHPExecutableLocation();
-				
+        $this->initialize($options);
+    }
+
+    private function initialize($options = array())
+    {
+        $this->initializeOptions($options);
+        $this->initializeTempFiles();
+        $this->initializeAutocompletion();
+        $this->initializeTags();
+        $this->initializeRequires();
+    }
+
+    private function initializeOptions($options = array())
+    {
         // merge opts
         $this->options = array_merge(array(
                                             // default options
-                                            self::OPT_TAGS_FILE => NULL,
-                                            self::OPT_REQUIRE => NULL,
+                                            self::OPT_TAGS_FILE     => NULL,
+                                            self::OPT_REQUIRE       => NULL,
+                                            self::OPT_TMP_DIR       => NULL,
+                                            self::OPT_PROMPT_HEADER => $this->getPromptHeader(),
+                                            self::OPT_PHP_BIN       => $this->getDefaultPhpBin(),
                                           ), $options);
+    }
 
-        // initialize temp files
+    private function initializeTempFiles()
+    {
         $this->tmpFileShellCommand = $this->tmpFileNamed('command');
         $this->tmpFileShellCommandRequires = $this->tmpFileNamed('requires');
         $this->tmpFileShellCommandState = $this->tmpFileNamed('state');
+    }
 
-        // setup autocomplete
+    private function initializeAutocompletion()
+    {
         $phpList = get_defined_functions();
         $this->autocompleteList = array_merge($this->autocompleteList, $phpList['internal']);
         $this->autocompleteList = array_merge($this->autocompleteList, get_defined_constants());
         $this->autocompleteList = array_merge($this->autocompleteList, get_declared_classes());
         $this->autocompleteList = array_merge($this->autocompleteList, get_declared_interfaces());
+    }
 
-        // initialize tags
+    private function initializeTags()
+    {
         $tagsFile = $this->options[self::OPT_TAGS_FILE];
         if (file_exists($tagsFile))
         {
@@ -70,8 +92,10 @@ class iphp
             }
             $this->autocompleteList = array_merge($this->autocompleteList, $tags);
         }
-
-        // process optional require files
+    }
+    
+    private function initializeRequires()
+    {
         if ($this->options[self::OPT_REQUIRE])
         {
             if (!is_array($this->options[self::OPT_REQUIRE]))
@@ -82,38 +106,90 @@ class iphp
         }
     }
 
+    private function getDefaultPhpBin()
+    {
+        if(strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
+        {
+            $phpExecutableName = 'php.exe';
+        }
+        else
+        {
+            $phpExecutableName = 'php';
+        }
+        return PHP_BINDIR . DIRECTORY_SEPARATOR . $phpExecutableName;
+    }
+
     private function tmpFileNamed($name)
     {
-        return tempnam(sys_get_temp_dir(), "iphp.{$name}.");
+        return tempnam($this->tmpDirName(), "iphp.{$name}.");
     }
-    
+
+    private function tmpDirName()
+    {
+        return empty($this->options['tmp_dir']) ? sys_get_temp_dir() : $this->options['tmp_dir'];
+    }
+
+    public function getPromptHeader()
+    {
+        return <<<END
+
+Welcome to iphp, the interactive php shell!
+
+Features include:
+- autocomplete (tab key)
+- readline support w/history
+- automatically wired into your project's autoload
+
+Enter a php statement at the prompt, and it will be evaluated. The variable \$_ will contain the result.
+
+Example:
+
+> new ArrayObject(array(1,2))
+ArrayObject Object
+(
+    [0] => 1
+    [1] => 2
+)
+
+> \$_[0] + 1
+2
+
+
+END;
+    }
+
     public function prompt()
     {
         return $this->prompt;
     }
-    
+
     public function historyFile()
     {
         return getenv('HOME') . '/.iphpHistory';
     }
-    
+
     public function readlineCallback($command)
     {
         if ($command === NULL) exit;
         $this->lastCommand = $command;
     }
-    
+
     public function readlineCompleter($str)
     {
         return $this->autocompleteList;
     }
-    
+
     public function doCommand($command)
     {
         print "\n";
         if (trim($command) == '')
         {
             return;
+        }
+
+        if(preg_match('/^(exit|die|quit|bye)(\(\))?;?$/', trim($command))){
+            print("\n");
+            exit(0);
         }
 
         if (!empty($command) and function_exists('readline_add_history'))
@@ -155,7 +231,9 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
 
             $result = NULL;
             $output = array();
-            $lastLine = exec("{$this->phpExecutable} {$this->tmpFileShellCommand} 2>&1", $output, $result);
+
+            $lastLine = exec("{$this->options[self::OPT_PHP_BIN]} {$this->tmpFileShellCommand} 2>&1", $output, $result);
+
             if ($result != 0) throw( new Exception("Fatal error executing php: " . join("\n", $output)) );
 
             // boostrap requires environment of command
@@ -164,7 +242,7 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
                 if ($require === $this->tmpFileShellCommand) continue;
                 require_once($require);
             }
-            
+
             $lastState = unserialize(file_get_contents($this->tmpFileShellCommandState));
             $this->lastResult = $lastState['_'];
             if ($lastState['__out'])
@@ -189,7 +267,7 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
             print "Uncaught exception with command:\n" . $e->getMessage() . "\n";
         }
     }
-    
+
     private function myReadline()
     {
         $this->lastCommand = NULL;
@@ -207,6 +285,7 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
         readline_callback_handler_remove();
         return $this->lastCommand;
     }
+
     public function readline()
     {
         if (function_exists('readline'))
@@ -241,31 +320,8 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
             pcntl_signal(SIGINT, array($shell, 'stop'));
         }
 
-        print<<<END
+        print $shell->options[self::OPT_PROMPT_HEADER];
 
-Welcome to iphp, the interactive php shell!
-
-Features include:
-- autocomplete (tab key)
-- readline support w/history
-- automatically wired into your project's autoload
-
-Enter a php statement at the prompt, and it will be evaluated. The variable \$_ will contain the result.
-
-Example:
-
-> new ArrayObject(array(1,2))
-ArrayObject Object
-(
-    [0] => 1
-    [1] => 2
-)
-
-> \$_[0] + 1
-2
-
-
-END;
         // readline history
         if (function_exists('readline_read_history'))
         {
@@ -280,18 +336,5 @@ END;
         {
             $shell->doCommand($shell->readline());
         }
-    }
-
-    private function initializePHPExecutableLocation()
-    {
-        if(strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
-        {
-            $phpExecutableName = 'php.exe';
-        }
-        else
-        {
-            $phpExecutableName = 'php';
-        }
-        $this->phpExecutable = PHP_BINDIR . DIRECTORY_SEPARATOR . $phpExecutableName;
     }
 }
