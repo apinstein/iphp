@@ -139,7 +139,7 @@ Welcome to iphp, the interactive php shell!
 Features include:
 - autocomplete (tab key)
 - readline support w/history
-- automatically wired into your project's autoload
+- require/include support
 
 Enter a php statement at the prompt, and it will be evaluated. The variable \$_ will contain the result.
 
