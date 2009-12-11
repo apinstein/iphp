@@ -13,13 +13,13 @@ iphp is an interactive php shell that solves a number of painful problems with n
 
 Example:
 
-    > new ArrayObject(array(1,2))
+    php> new ArrayObject(array(1,2))
     
-    ArrayObject Object
+    => ArrayObject Object
     (
         [0] => 1
         [1] => 2
     )
     
-    > $_[0] + 1
-    2
+    php> $_[0] + 1
+    => 2

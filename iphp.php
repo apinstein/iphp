@@ -145,15 +145,15 @@ Enter a php statement at the prompt, and it will be evaluated. The variable \$_ 
 
 Example:
 
-> new ArrayObject(array(1,2))
-ArrayObject Object
+{$this->inputPrompt}new ArrayObject(array(1,2))
+{$this->outputPrompt}ArrayObject Object
 (
     [0] => 1
     [1] => 2
 )
 
-> \$_[0] + 1
-2
+{$this->inputPrompt}\$_[0] + 1
+{$this->outputPrompt}2
 
 
 END;
