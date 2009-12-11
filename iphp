@@ -4,4 +4,13 @@ ini_set('memory_limit', '20M');
 
 require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'iphp.php';
 
-iphp::main(array());
+$opts = array();
+
+// bootstrap options
+$tagsFilePath = getcwd() . DIRECTORY_SEPARATOR . 'tags';
+if (file_exists($tagsFilePath))
+{
+    $opts[iphp::OPT_TAGS_FILE] = $tagsFilePath;
+}
+
+iphp::main($opts);
