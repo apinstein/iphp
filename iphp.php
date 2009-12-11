@@ -13,8 +13,9 @@
 class iphp
 {
     protected $lastResult = NULL;
-    protected $lastCommand = NULL;
-    protected $prompt = '> ';
+    protected $inputPrompt = 'php> ';
+    protected $outputPrompt = '=> ';
+    protected $inReadline = false;
     protected $autocompleteList = array();
     protected $tmpFileShellCommand = null;
     protected $tmpFileShellCommandRequires = null;
@@ -158,37 +159,29 @@ ArrayObject Object
 END;
     }
 
-    public function prompt()
-    {
-        return $this->prompt;
-    }
-
     public function historyFile()
     {
         return getenv('HOME') . '/.iphpHistory';
     }
 
-    public function readlineCallback($command)
-    {
-        if ($command === NULL) exit;
-        $this->lastCommand = $command;
-    }
-
-    public function readlineCompleter($str)
-    {
-        return $this->autocompleteList;
-    }
-
     public function doCommand($command)
     {
-        print "\n";
+        $this->inReadline = false;
+
+        // detect ctl-d
+        if ($command === NULL)
+        {
+            exit(0);
+        }
+
+        // no need to process empty commands
         if (trim($command) == '')
         {
             return;
         }
 
+        // internal command parser; to be refactored later and converted to a dispatch pattern
         if(preg_match('/^(exit|die|quit|bye)(\(\))?;?$/', trim($command))){
-            print("\n");
             exit(0);
         }
 
@@ -245,6 +238,7 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
 
             $lastState = unserialize(file_get_contents($this->tmpFileShellCommandState));
             $this->lastResult = $lastState['_'];
+            print $this->outputPrompt;
             if ($lastState['__out'])
             {
                 print $lastState['__out'] . "\n";
@@ -268,40 +262,45 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
         }
     }
 
-    private function myReadline()
+    public function fakeReadline()
     {
-        $this->lastCommand = NULL;
-        readline_callback_handler_install($this->prompt, array($this, 'readlineCallback'));
-        while ($this->lastCommand === NULL) {
+        $this->inReadline = true;
+        print $this->inputPrompt;
+        $input =  fgets( STDIN );
+        // catch ctl-d or other errors
+        if ($input === false)
+        {
+            exit(0);
+        }
+        $command = rtrim($input, "\n");
+        $this->doCommand($command);
+    }
+
+    public function readlineCompleter($str)
+    {
+        return $this->autocompleteList;
+    }
+
+    private function realReadline()
+    {
+        $this->inReadline = true;
+        while ($this->inReadline) {
             $w = NULL;
             $e = NULL;
-            $n = @stream_select($r = array(STDIN), $w, $e, NULL);       // @ to silence warning on ctl-c
-            if ($n === false) break;                                    // ctl-c or other signal
+            $r = array(STDIN);
+            $n = @stream_select($r, $w, $e, NULL);       // @ to silence warning on ctl-c
+            // detect ctl-c or other signal (causes stream_select to exit with FALSE)
+            if ($n === false)
+            {
+                readline_callback_handler_remove();
+                print "\n";
+                readline_callback_handler_install($this->inputPrompt, array($this, 'doCommand'));
+            }
             if (in_array(STDIN, $r))
             {
                 readline_callback_read_char();
             }
         }
-        readline_callback_handler_remove();
-        return $this->lastCommand;
-    }
-
-    public function readline()
-    {
-        if (function_exists('readline'))
-        {
-            $command = $this->myReadline();
-        }
-        else
-        {
-            $command = rtrim( fgets( STDIN ), "\n" );
-            // catch ctl-d
-            if (strlen($command) == 0)
-            {
-                exit;
-            }
-        }
-        return $command;
     }
 
     public function stop()
@@ -309,32 +308,50 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
         // no-op
     }
 
-    public static function main($options = array())
+    public function runREPL()
     {
-        $shell = new iphp($options);
-
         // install signal handlers if possible
         declare(ticks = 1);
         if (function_exists('pcntl_signal'))
         {
-            pcntl_signal(SIGINT, array($shell, 'stop'));
+            pcntl_signal(SIGINT, array($this, 'stop'));
         }
 
-        print $shell->options[self::OPT_PROMPT_HEADER];
+        print $this->options[self::OPT_PROMPT_HEADER];
 
         // readline history
         if (function_exists('readline_read_history'))
         {
-            readline_read_history($shell->historyFile());   // doesn't seem to work, even though readline_list_history() shows the read items!
+            readline_read_history($this->historyFile());   // doesn't seem to work, even though readline_list_history() shows the read items!
         }
         // install tab-complete
         if (function_exists('readline_completion_function'))
         {
-            readline_completion_function(array($shell, 'readlineCompleter'));
+            readline_completion_function(array($this, 'readlineCompleter'));
         }
-        while (true)
+
+        // run repl loop.
+        if (function_exists('readline'))
         {
-            $shell->doCommand($shell->readline());
+            // readline automatically re-prints the prompt after the callback runs, so the only way to prevent double-prompts is to do it this way until we figure out something better
+            readline_callback_handler_install($this->inputPrompt, array($this, 'doCommand'));
+            while (true)
+            {
+                $this->realReadline();
+            }
         }
+        else
+        {
+            while (true)
+            {
+                $this->fakeReadline();
+            }
+        }
+    }
+
+    public static function main($options = array())
+    {
+        $shell = new iphp($options);
+        $shell->runREPL();
     }
 }
