@@ -1,6 +1,8 @@
 <?php
 // vim: set expandtab tabstop=4 shiftwidth=4:
 
+require dirname(__FILE__).DIRECTORY_SEPARATOR.'iphp_commands.php';
+
 /**
  * The iphp shell is an interactive PHP shell for working with your php applications.
  *
@@ -20,7 +22,10 @@ class iphp
     protected $tmpFileShellCommand = null;
     protected $tmpFileShellCommandRequires = null;
     protected $tmpFileShellCommandState = null;
+    protected $commandEscapeChar = '\\';
     protected $options = array();
+
+    protected $internalCommands = array();
 
     const OPT_TAGS_FILE     = 'tags';
     const OPT_REQUIRE       = 'require';
@@ -39,13 +44,18 @@ class iphp
         $this->initialize($options);
     }
 
-    private function initialize($options = array())
+    public function initialize($options = array())
     {
         $this->initializeOptions($options);
         $this->initializeTempFiles();
         $this->initializeAutocompletion();
         $this->initializeTags();
         $this->initializeRequires();
+        $this->initializeCommands();
+    }
+    public function options()
+    {
+        return $this->options;
     }
 
     private function initializeOptions($options = array())
@@ -104,6 +114,21 @@ class iphp
                 $this->options[self::OPT_REQUIRE] = array($this->options[self::OPT_REQUIRE]);
             }
             file_put_contents($this->tmpFileShellCommandRequires, serialize($this->options[self::OPT_REQUIRE]));
+        }
+    }
+
+    private function initializeCommands()
+    {
+        $this->internalCommands = array();
+        foreach (array(new iphp_command_exit, new iphp_command_reload) as $command) {
+            $names = $command->name();
+            if (!is_array($names))
+            {
+                $names = array($names);
+            }
+            foreach ($names as $name) {
+                $this->internalCommands[$name] = $command;
+            }
         }
     }
 
@@ -177,14 +202,30 @@ END;
         // no need to process empty commands
         if (trim($command) == '')
         {
+
             return;
         }
 
-        // internal command parser; to be refactored later and converted to a dispatch pattern
-        if(preg_match('/^(exit|die|quit|bye)(\(\))?;?$/', trim($command))){
-            exit(0);
+        // internal command parser
+        $matches = array();
+        if (preg_match("/\s*\\{$this->commandEscapeChar}(\w+)\s?(.*)/", trim($command), $matches))
+        {
+            $internalCommand = $matches[1];
+            $argsString = $matches[2];
+
+            $args = array();
+            if (preg_match_all("/(?:([\w]+)\s?)/", $argsString, $matches))
+            {
+                $args = $matches[1];
+            }
+            if (isset($this->internalCommands[$internalCommand]))
+            {
+                $this->internalCommands[$internalCommand]->run($this, $args);
+            }
+            return;
         }
 
+        // normal command
         if (!empty($command) and function_exists('readline_add_history'))
         {
             readline_add_history($command);
