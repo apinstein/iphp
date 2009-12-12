@@ -23,9 +23,8 @@ class iphp
     protected $tmpFileShellCommandRequires = null;
     protected $tmpFileShellCommandState = null;
     protected $commandEscapeChar = '\\';
-    protected $options = array();
-
     protected $internalCommands = array();
+    protected $options = array();
 
     const OPT_TAGS_FILE     = 'tags';
     const OPT_REQUIRE       = 'require';
@@ -127,6 +126,11 @@ class iphp
                 $names = array($names);
             }
             foreach ($names as $name) {
+                if (isset($this->internalCommands[$name]))
+                {
+                    print "WARNING: internal command '{$name}' is already registered by " . get_class($this->internalCommands[$name]) . ". Skipping command for " . get_class($command) . ".";
+                    continue;
+                }
                 $this->internalCommands[$name] = $command;
             }
         }
