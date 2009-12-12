@@ -1,12 +1,25 @@
 <?php
 
-interface iphp_command
+abstract class iphp_command
 {
-    function run($shell, $args);
-    function name();
+    abstract public function run($shell, $args);
+    abstract public function name();
+    public function help() { return ''; }
 }
 
-class iphp_command_exit implements iphp_command
+class iphp_command_help extends iphp_command
+{
+    function run($shell, $args)
+    {
+        $shell->printHelp();
+    }
+    function name()
+    {
+        return array('help', '?');
+    }
+}
+
+class iphp_command_exit extends iphp_command
 {
     function run($shell, $args)
     {
@@ -18,7 +31,7 @@ class iphp_command_exit implements iphp_command
     }
 }
 
-class iphp_command_reload implements iphp_command
+class iphp_command_reload extends iphp_command
 {
     function run($shell, $args)
     {
@@ -27,6 +40,10 @@ class iphp_command_reload implements iphp_command
     function name()
     {
         return 'reload';
+    }
+    function help()
+    {
+        return "Re-initialize the iphp state so it's just as if you quit and re-started.";
     }
 }
 

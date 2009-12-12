@@ -56,6 +56,24 @@ class iphp
     {
         return $this->options;
     }
+    public function printHelp()
+    {
+        $pad = 30;
+        print str_pad('alias(es)', $pad, ' ', STR_PAD_RIGHT) . "<help>\n";
+        foreach (array_unique($this->internalCommands, SORT_REGULAR) as $name => $command) {
+            $aliases = $command->name();
+            if (!is_array($aliases))
+            {
+                $aliases = array($aliases);
+            }
+            $help = $command->help();
+            if (!$help)
+            {
+                $help = "No help available.";
+            }
+            print str_pad(join(',', $aliases), $pad, ' ', STR_PAD_RIGHT) . "{$help}\n";
+        }
+    }
 
     private function initializeOptions($options = array())
     {
@@ -119,7 +137,7 @@ class iphp
     private function initializeCommands()
     {
         $this->internalCommands = array();
-        foreach (array(new iphp_command_exit, new iphp_command_reload) as $command) {
+        foreach (array(new iphp_command_exit, new iphp_command_reload, new iphp_command_help) as $command) {
             $names = $command->name();
             if (!is_array($names))
             {
@@ -212,7 +230,7 @@ END;
 
         // internal command parser
         $matches = array();
-        if (preg_match("/\s*\\{$this->commandEscapeChar}(\w+)\s?(.*)/", trim($command), $matches))
+        if (preg_match("/\s*\\{$this->commandEscapeChar}([\w\?]+)\s?(.*)/", trim($command), $matches))
         {
             $internalCommand = $matches[1];
             $argsString = $matches[2];
@@ -225,6 +243,10 @@ END;
             if (isset($this->internalCommands[$internalCommand]))
             {
                 $this->internalCommands[$internalCommand]->run($this, $args);
+            }
+            else
+            {
+                print "Command '{$internalCommand}' does not exist.\n";
             }
             return;
         }
