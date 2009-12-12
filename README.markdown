@@ -8,6 +8,7 @@ iphp is an interactive php shell that solves a number of painful problems with n
 * support ctags *tags* files
 * implemented as a class for integration with your framework
 * support for require/include; you can load php files within iphp
+* extensible command system
 
 Example:
 
@@ -21,3 +22,10 @@ Example:
     
     php> $_[0] + 1
     => 2
+
+    php> \help 
+    alias(es)                     <help>
+    -------------------------------------------------------
+    exit,die,bye,quit             No help available.
+    reload                        Re-initialize the iphp state so it's just as if you quit and re-started.
+    help,?                        No help available.

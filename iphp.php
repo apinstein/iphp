@@ -47,10 +47,10 @@ class iphp
     {
         $this->initializeOptions($options);
         $this->initializeTempFiles();
-        $this->initializeAutocompletion();
-        $this->initializeTags();
         $this->initializeRequires();
         $this->initializeCommands();
+        $this->initializeAutocompletion();
+        $this->initializeTags();
     }
     public function options()
     {
@@ -60,6 +60,7 @@ class iphp
     {
         $pad = 30;
         print str_pad('alias(es)', $pad, ' ', STR_PAD_RIGHT) . "<help>\n";
+        print str_repeat('-', $pad * 3) . "\n";
         foreach (array_unique($this->internalCommands, SORT_REGULAR) as $name => $command) {
             $aliases = $command->name();
             if (!is_array($aliases))
@@ -102,6 +103,7 @@ class iphp
         $this->autocompleteList = array_merge($this->autocompleteList, get_defined_constants());
         $this->autocompleteList = array_merge($this->autocompleteList, get_declared_classes());
         $this->autocompleteList = array_merge($this->autocompleteList, get_declared_interfaces());
+        $this->autocompleteList = array_merge($this->autocompleteList, array_keys($this->internalCommands));
     }
 
     private function initializeTags()
@@ -187,6 +189,7 @@ Features include:
 - autocomplete (tab key)
 - readline support w/history
 - require/include support
+- extensible command system
 
 Enter a php statement at the prompt, and it will be evaluated. The variable \$_ will contain the result.
 
@@ -201,6 +204,9 @@ Example:
 
 {$this->inputPrompt}\$_[0] + 1
 {$this->outputPrompt}2
+
+To call an internal command, prefix the command with the \\ character.
+{$this->inputPrompt}\\help
 
 
 END;
