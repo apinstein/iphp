@@ -58,10 +58,15 @@ class iphp
     }
     public function printHelp()
     {
+        $uniqueArray = array(); // sadly array_unique doesn't work for arrays of objects. this works, but it slower, but hey it's plenty fast.
         $pad = 30;
         print str_pad('alias(es)', $pad, ' ', STR_PAD_RIGHT) . "<help>\n";
         print str_repeat('-', $pad * 3) . "\n";
-        foreach (array_unique($this->internalCommands, SORT_REGULAR) as $name => $command) {
+        foreach ($this->internalCommands as $name => $command) {
+            // only show commands once (due to command aliases)
+            if (in_array($command, $uniqueArray)) continue;
+            $uniqueArray[] = $command;
+
             $aliases = $command->name();
             if (!is_array($aliases))
             {

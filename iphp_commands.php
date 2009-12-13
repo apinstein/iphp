@@ -17,6 +17,7 @@ class iphp_command_help extends iphp_command
     {
         return array('help', '?');
     }
+    function help() { return 'View a list of all installed commands.'; }
 }
 
 class iphp_command_exit extends iphp_command
@@ -29,6 +30,7 @@ class iphp_command_exit extends iphp_command
     {
         return array('exit', 'die', 'bye', 'quit');
     }
+    function help() { return 'Quit the shell.'; }
 }
 
 class iphp_command_reload extends iphp_command
