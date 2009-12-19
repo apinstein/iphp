@@ -78,7 +78,7 @@ class iphp
             {
                 $help = "No help available.";
             }
-            print str_pad(join(',', $aliases), $pad, ' ', STR_PAD_RIGHT) . "{$help}\n";
+            print str_pad($this->commandEscapeChar . join(",{$this->commandEscapeChar}", $aliases), $pad, ' ', STR_PAD_RIGHT) . "{$help}\n";
         }
     }
 
