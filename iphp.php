@@ -31,6 +31,7 @@ class iphp
     const OPT_TMP_DIR       = 'tmp_dir';
     const OPT_PROMPT_HEADER = 'prompt_header';
     const OPT_PHP_BIN       = 'php_bin';
+    const OPT_COMMANDS      = 'commands';
 
     /**
      * Constructor
@@ -91,6 +92,7 @@ class iphp
                                             self::OPT_TMP_DIR       => NULL,
                                             self::OPT_PROMPT_HEADER => $this->getPromptHeader(),
                                             self::OPT_PHP_BIN       => $this->getDefaultPhpBin(),
+                                            self::OPT_COMMANDS      => array(),
                                           ), $options);
     }
 
@@ -143,8 +145,11 @@ class iphp
 
     private function initializeCommands()
     {
+        $commandsToLoad = array('iphp_command_exit', 'iphp_command_reload', 'iphp_command_help');
+        $commandsToLoad = array_merge($commandsToLoad, $this->options[self::OPT_COMMANDS]);
         $this->internalCommands = array();
-        foreach (array(new iphp_command_exit, new iphp_command_reload, new iphp_command_help) as $command) {
+        foreach ($commandsToLoad as $commandName) {
+            $command = new $commandName;
             $names = $command->name();
             if (!is_array($names))
             {
