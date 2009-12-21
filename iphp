@@ -2,7 +2,15 @@
 <?php
 ini_set('memory_limit', '20M');
 
-require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'iphp.php';
+if (strpos('@php_bin@', '@php_bin') === 0)  // not a pear install
+{
+    require_once dirname(__FILE__).DIRECTORY_SEPARATOR.'iphp.php';
+}
+else
+{
+    require_once 'iphp'.DIRECTORY_SEPARATOR.'iphp.php';
+}
+
 
 $opts = array();
 
