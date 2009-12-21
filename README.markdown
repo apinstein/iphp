@@ -10,7 +10,13 @@ iphp is an interactive php shell that solves a number of painful problems with n
 * support for require/include; you can load php files within iphp
 * extensible command system
 
-Example:
+INSTALLATION
+pear channel-discover pear.nimblize.com
+pear install nimblize/iphp
+
+Thanks to http://github.com/jetviper21/ for the PEAR hosting.
+
+EXAMPLE
 
     php> new ArrayObject(array(1,2))
     
