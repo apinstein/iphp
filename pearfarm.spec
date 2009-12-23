@@ -1,6 +1,6 @@
 <?php
 
-$spec = PEARFarm_Specification::newSpec(array(PEARFarm_Specification::OPT_BASEDIR => dirname(__FILE__)))
+$spec = PackageSpec::create(array(PackageSpec::OPT_BASEDIR => dirname(__FILE__)))
             ->setName('iphp')
             ->setChannel('pear.nimblize.com')
             ->setSummary('PHP Shell')
@@ -9,9 +9,10 @@ $spec = PEARFarm_Specification::newSpec(array(PEARFarm_Specification::OPT_BASEDI
             ->setReleaseStability('stable')
             ->setApiVersion('1.0.0')
             ->setApiStability('stable')
-            ->setLicense(PEARFarm_Specification::LICENSE_MIT)
+            ->setLicense(PackageSpec::LICENSE_MIT)
             ->setNotes('First release of iphp.')
             ->addMaintainer('lead', 'Alan Pinstein', 'apinstein', 'apinstein@mac.com')
             ->addGitFiles()
+            ->addExcludeFiles('.gitignore')
             ->addExecutable('iphp')
             ;
