@@ -13,11 +13,7 @@ iphp is an interactive php shell that solves a number of painful problems with n
 INSTALLATION
 ============
 
-pear channel-discover pear.nimblize.com
-
-pear install nimblize/iphp
-
-Thanks to http://github.com/jetviper21/ for the PEAR hosting.
+pear install apinstein.pearfarm.org/iphp
 
 EXAMPLE
 =======
