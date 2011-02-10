@@ -413,8 +413,8 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
             readline_completion_function(array($this, 'readlineCompleter'));
         }
 
-        // run repl loop.
-        if (function_exists('readline'))
+        // run repl loop. libedit defines readline but not callback handlers so check for both
+        if (function_exists('readline') && function_exists('readline_callback_handler_install'))
         {
             // readline automatically re-prints the prompt after the callback runs, so the only way to prevent double-prompts is to do it this way until we figure out something better
             readline_callback_handler_install($this->inputPrompt, array($this, 'doCommand'));
