@@ -176,7 +176,7 @@ class iphp
         {
             $phpExecutableName = 'php';
         }
-        return PHP_BINDIR . DIRECTORY_SEPARATOR . $phpExecutableName;
+        return PHP_BINDIR . DIRECTORY_SEPARATOR . $phpExecutableName . " -d include_path=" . escapeshellarg(".:" . ini_get('include_path'));
     }
 
     private function tmpFileNamed($name)
