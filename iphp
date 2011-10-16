@@ -1,6 +1,5 @@
 #!/usr/bin/env php
 <?php
-ini_set('memory_limit', '20M');
 
 if (strpos('@php_bin@', '@php_bin') === 0)  // not a pear install
 {
