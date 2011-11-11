@@ -14,7 +14,6 @@ require dirname(__FILE__).DIRECTORY_SEPARATOR.'iphp_commands.php';
  */
 class iphp
 {
-    protected $lastResult = NULL;
     protected $inputPrompt = 'php> ';
     protected $outputPrompt = '=> ';
     protected $inReadline = false;
@@ -240,7 +239,6 @@ END;
         // no need to process empty commands
         if (trim($command) == '')
         {
-
             return;
         }
 
@@ -267,6 +265,14 @@ END;
             return;
         }
 
+        // mutli-line detection (see if the code parses; if not, assume
+        $tokenized = token_get_all('<?' . 'php ' . $command);
+        array_shift($tokenized); // eat open tag
+        while (count($tokenized) && $tokenized[0][0] === T_WHITESPACE) {
+            array_shift($tokenized);
+        }
+        $firstTokenInCommand = $tokenized[0][0];
+
         // normal command
         if (!empty($command) and function_exists('readline_add_history'))
         {
@@ -282,6 +288,14 @@ END;
             $requires = array();
         }
 
+        $saveLastResultCommand = "\$_ = NULL;";
+        $savedLastResult = false;
+        if (token_is_assignable($firstTokenInCommand))
+        {
+            $savedLastResult = true;
+            $saveLastResultCommand = "\$_ = ";
+        }
+
         $parsedCommand = "<?php
 foreach (" . var_export($requires, true) . " as \$file) {
     require_once(\$file);
@@ -292,7 +306,7 @@ if (is_array(\$__commandState))
     extract(\$__commandState);
 }
 ob_start();
-\$_ = {$command};
+{$saveLastResultCommand}{$command};
 \$__out = ob_get_contents();
 ob_end_clean();
 \$__allData = get_defined_vars();
@@ -302,7 +316,6 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
 ";
         #echo "  $parsedCommand\n";
         try {
-            $_ = $this->lastResult;
             file_put_contents($this->tmpFileShellCommand, $parsedCommand);
 
             $result = NULL;
@@ -320,22 +333,29 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
             }
 
             $lastState = unserialize(file_get_contents($this->tmpFileShellCommandState));
-            $this->lastResult = $lastState['_'];
-            print $this->outputPrompt;
+            // echo output
             if ($lastState['__out'])
             {
                 print $lastState['__out'] . "\n";
             }
-            else
+
+            // print "result" if appropriate
+            print $this->outputPrompt;
+            if ($savedLastResult)
             {
-                if (is_object($this->lastResult) && !is_callable(array($this->lastResult, '__toString')))
+                $lastResult = $lastState['_'];
+                if (is_object($lastResult) && !is_callable(array($lastResult, '__toString')))
                 {
-                    print_r($this->lastResult) . "\n";
+                    print_r($lastResult) . "\n";
                 }
                 else
                 {
-                    print $this->lastResult . "\n";
+                    print $lastResult . "\n";
                 }
+            }
+            else
+            {
+                print "(no value)\n";
             }
 
             // after the eval, we might have new classes. Only update it if real readline is enabled
@@ -437,4 +457,38 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
         $shell = new iphp($options);
         $shell->runREPL();
     }
+}
+
+function token_is_assignable($token)
+{
+    return in_array($token, array(
+        T_ARRAY,
+        T_ARRAY_CAST,
+        T_BOOL_CAST,
+        T_CLONE,
+        T_CONST,
+        T_CONSTANT_ENCAPSED_STRING,
+        // T_DIR,
+        T_DNUMBER,
+        T_DOUBLE_CAST,
+        T_EMPTY,
+        T_EVAL,
+        T_FILE,
+        T_FUNC_C,
+        T_INT_CAST,
+        T_ISSET,
+        T_LINE,
+        T_LNUMBER,
+        T_METHOD_C,
+        T_NEW,
+        // T_NS,
+        T_NUM_STRING,
+        T_OBJECT_CAST,
+        T_START_HEREDOC,
+        T_STATIC,
+        T_STRING,
+        T_STRING_CAST,
+        T_STRING_VARNAME,
+        T_VARIABLE,
+        ));
 }
