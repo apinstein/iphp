@@ -17,6 +17,7 @@ class iphp
     protected $inputPrompt = 'php> ';
     protected $outputPrompt = '=> ';
     protected $inReadline = false;
+    protected $multilineBuffer = array();
     protected $autocompleteList = array();
     protected $tmpFileShellCommand = null;
     protected $tmpFileShellCommandRequires = null;
@@ -243,44 +244,94 @@ END;
         }
 
         // internal command parser
-        $matches = array();
-        if (preg_match("/\s*\\{$this->commandEscapeChar}([\w\?]+)\s?(.*)/", trim($command), $matches))
+        if (count($this->multilineBuffer) === 0)
         {
-            $internalCommand = $matches[1];
-            $argsString = $matches[2];
+            $matches = array();
+            if (preg_match("/\s*\\{$this->commandEscapeChar}([\w\?]+)\s?(.*)/", trim($command), $matches))
+            {
+                $internalCommand = $matches[1];
+                $argsString = $matches[2];
 
-            $args = array();
-            if (preg_match_all("/(?:([\w]+)\s?)/", $argsString, $matches))
-            {
-                $args = $matches[1];
+                $args = array();
+                if (preg_match_all("/(?:([\w]+)\s?)/", $argsString, $matches))
+                {
+                    $args = $matches[1];
+                }
+                if (isset($this->internalCommands[$internalCommand]))
+                {
+                    $this->internalCommands[$internalCommand]->run($this, $args);
+                }
+                else
+                {
+                    print "Command '{$internalCommand}' does not exist.\n";
+                }
+                return;
             }
-            if (isset($this->internalCommands[$internalCommand]))
-            {
-                $this->internalCommands[$internalCommand]->run($this, $args);
-            }
-            else
-            {
-                print "Command '{$internalCommand}' does not exist.\n";
-            }
-            return;
+            // normal command
+            $command = preg_replace('/^\//', '$_', $command);  // "/" as a command will just output the last result.
         }
 
-        // mutli-line detection (see if the code parses; if not, assume
-        $tokenized = token_get_all('<?' . 'php ' . $command);
-        array_shift($tokenized); // eat open tag
-        while (count($tokenized) && $tokenized[0][0] === T_WHITESPACE) {
-            array_shift($tokenized);
-        }
-        $firstTokenInCommand = $tokenized[0][0];
-
-        // normal command
+        // maintain readline history
         if (!empty($command) and function_exists('readline_add_history'))
         {
             readline_add_history($command);
             readline_write_history($this->historyFile());
         }
 
-        $command = preg_replace('/^\//', '$_', $command);  // "/" as a command will just output the last result.
+        // mutli-line detection (see if the code parses; if not, assume
+        if (count($this->multilineBuffer))
+        {
+            $commandToParse = join("\n", $this->multilineBuffer) . "\n{$command}";
+        }
+        else
+        {
+            $commandToParse = $command;
+        }
+
+        $tokenized = token_get_all('<?' . 'php ' . $commandToParse);
+        // eat open tag
+        array_shift($tokenized);
+        // eat whitespace
+        while (count($tokenized) && is_array($tokenized) && $tokenized[0][0] === T_WHITESPACE) {
+            array_shift($tokenized);
+        }
+
+        // check for multiline mode
+        $this->multilineState = array();
+        foreach ($tokenized as $token) {
+            if (is_array($token)) continue;
+
+            switch ($token) {
+                case '(':
+                case '{':
+                case '[':
+                    array_push($this->multilineState, $token);
+                    break;
+                case ')':
+                case '}':
+                case ']':
+                    array_pop($this->multilineState);
+                    break;
+            }
+        }
+        if (count($this->multilineState))
+        {
+            $this->multilineBuffer[] = $command;
+            print join('', $this->multilineState) . "> ";
+            return;
+        }
+        else if (count($this->multilineBuffer))
+        {
+            print "END ML\n";
+            $this->multilineBuffer[] = $command;
+            $commandToRun = join("\n", $this->multilineBuffer);
+            print "\nML:\n{$command}\n\n";
+            $this->multilineBuffer = array();
+        }
+        else
+        {
+            $commandToRun = $command;
+        }
 
         $requires = unserialize(file_get_contents($this->tmpFileShellCommandRequires));
         if (!is_array($requires))
@@ -290,7 +341,7 @@ END;
 
         $saveLastResultCommand = "\$_ = NULL;";
         $savedLastResult = false;
-        if (token_is_assignable($firstTokenInCommand))
+        if (token_is_assignable($tokenized[0]))
         {
             $savedLastResult = true;
             $saveLastResultCommand = "\$_ = ";
@@ -306,7 +357,7 @@ if (is_array(\$__commandState))
     extract(\$__commandState);
 }
 ob_start();
-{$saveLastResultCommand}{$command};
+{$saveLastResultCommand}{$commandToRun};
 \$__out = ob_get_contents();
 ob_end_clean();
 \$__allData = get_defined_vars();
@@ -461,7 +512,12 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
 
 function token_is_assignable($token)
 {
+    if (is_array($token))
+    {
+        $token = $token[0];
+    }
     return in_array($token, array(
+        '(',
         T_ARRAY,
         T_ARRAY_CAST,
         T_BOOL_CAST,
