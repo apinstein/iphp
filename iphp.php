@@ -368,8 +368,17 @@ file_put_contents('{$this->tmpFileShellCommandState}', serialize(\$__allData));
     public function fakeReadline()
     {
         $this->inReadline = true;
-        print $this->inputPrompt;
-        $input =  fgets( STDIN );
+
+        if (function_exists('readline'))
+        {
+            $input = readline($this->inputPrompt);
+        }
+        else
+        {
+            print $this->inputPrompt;
+            $input = fgets( STDIN );
+        }
+
         // catch ctl-d or other errors
         if ($input === false)
         {
